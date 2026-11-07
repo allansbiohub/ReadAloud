@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Read Aloud — PDF books, spoken</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#2f5d50">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Read Aloud">
+<style>
+:root{--bg:#f3f1ec;--surface:#fbfaf7;--ink:#1d2321;--muted:#68706c;--line:#d9d5cb;--accent:#2f5d50;--accent-ink:#fff;--hl:#f2dc8c;--hl-ink:#1d2321;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141816;--surface:#1c211f;--ink:#e8e6df;--muted:#97a09b;--line:#2e3633;--accent:#8fc4b2;--accent-ink:#10201a;--hl:#5a4d1c;--hl-ink:#f5ecc8;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#141816;--surface:#1c211f;--ink:#e8e6df;--muted:#97a09b;--line:#2e3633;--accent:#8fc4b2;--accent-ink:#10201a;--hl:#5a4d1c;--hl-ink:#f5ecc8;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Inter",system-ui,-apple-system,"Segoe UI",sans-serif;min-height:100vh}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 40px}
+h1{font:600 28px/1.15 "Newsreader",Georgia,"Times New Roman",serif;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 20px}
+.drop{border:1.5px dashed var(--line);border-radius:14px;padding:36px 20px;text-align:center;background:var(--surface);cursor:pointer;transition:border-color .15s,background .15s}
+.drop.over,.drop:hover,.drop:focus-visible{border-color:var(--accent);outline:none}
+.drop strong{display:block;font:600 19px "Newsreader",Georgia,serif;margin-bottom:4px}
+.drop span{color:var(--muted);font-size:14px}
+.status{margin:12px 0 0;color:var(--muted);font-size:14px;min-height:20px}
+.status.err{color:#b3402a}
+@media (prefers-color-scheme:dark){.status.err{color:#f09a86}}
+#player{display:none}
+.book{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 12px}
+.book b{font:600 18px "Newsreader",Georgia,serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.link{background:none;border:0;color:var(--accent);cursor:pointer;font:inherit;font-size:14px;padding:4px;text-decoration:underline}
+.reader{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px 22px;height:min(52vh,460px);overflow-y:auto;font:19px/1.75 "Newsreader",Georgia,"Times New Roman",serif;-webkit-overflow-scrolling:touch}
+.reader .s{cursor:pointer;border-radius:4px;padding:1px 0;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.reader .s:hover{background:color-mix(in srgb,var(--hl) 40%,transparent)}
+.reader .s.on{background:var(--hl);color:var(--hl-ink)}
+.pg{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0;color:var(--muted);font-size:14px}
+.pg input{width:64px;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);text-align:center}
+.bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin:6px 0 16px}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.ctl{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:18px}
+button.ic{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;font-size:17px;display:grid;place-items:center}
+button.ic:hover{border-color:var(--accent)}
+button.main{width:68px;height:68px;background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-size:24px}
+button:focus-visible,select:focus-visible,input:focus-visible,.drop:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:520px){.opts{grid-template-columns:1fr}}
+label{display:block;font-size:14px;color:var(--muted)}
+select,input[type=range]{width:100%;margin-top:6px}
+select{font:inherit;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+input[type=range]{accent-color:var(--accent)}
+.note{font-size:13px;color:var(--muted);margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Read Aloud</h1>
+  <p class="sub">Upload a PDF book and listen to it, sentence by sentence.</p>
+
+  <div id="drop" class="drop" tabindex="0" role="button" aria-label="Choose a PDF file">
+    <strong>Drop a PDF here or tap to choose one</strong>
+    <span>Your file stays in this browser. Nothing is uploaded.</span>
+    <input id="file" type="file" accept="application/pdf" hidden>
+  </div>
+  <p id="status" class="status" aria-live="polite"></p>
+
+  <section id="player">
+    <div class="book"><b id="title"></b><button class="link" id="swap">Open another book</button></div>
+    <div id="reader" class="reader" aria-live="off"></div>
+    <div class="pg">
+      <button class="link" id="pprev">Previous page</button>
+      <span>Page <input id="pnum" type="number" min="1" value="1" aria-label="Page number"> of <span id="ptot">1</span></span>
+      <button class="link" id="pnext">Next page</button>
+    </div>
+    <div class="bar"><i id="prog"></i></div>
+    <div class="ctl">
+      <button class="ic" id="back" aria-label="Previous sentence">⏮</button>
+      <button class="ic main" id="play" aria-label="Play">▶</button>
+      <button class="ic" id="fwd" aria-label="Next sentence">⏭</button>
+    </div>
+    <div class="opts">
+      <label>Voice<select id="voice"></select></label>
+      <label>Speed: <span id="rv">1.0×</span><input id="rate" type="range" min="0.6" max="2" step="0.1" value="1"></label>
+    </div>
+    <audio id="au" playsinline></audio>
+    <audio id="ka" loop playsinline></audio>
+    <p class="note" id="vnote">To keep reading with the screen locked or in another app, choose “Offline natural voice” (English, about 60 MB, downloaded once). Device voices may stop when the screen locks.</p>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const synth=window.speechSynthesis;
+let S=[],pages=0,idx=0,playing=false,token=0,curPage=-1,name='',voices=[];
+const save=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const load=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const say=(m,err)=>{$('status').textContent=m;$('status').className='status'+(err?' err':'')};
+
+if(!window.pdfjsLib||!synth){say(!synth?'This browser can’t speak text aloud. Try Chrome, Edge or Safari.':'The PDF reader failed to load. Check your connection and reload.',true)}
+else pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+/* ---------- voices ---------- */
+function score(v){let s=0;const lang=(navigator.language||'en').toLowerCase();
+ if(/natural|neural|premium|enhanced|online|siri/i.test(v.name))s+=6;
+ if(/google/i.test(v.name))s+=3;
+ if(v.lang.toLowerCase()===lang)s+=5;else if(v.lang.slice(0,2)===lang.slice(0,2))s+=3;
+ if(!v.localService)s+=1;return s}
+function fillVoices(){
+ voices=synth.getVoices().slice().sort((a,b)=>score(b)-score(a)||a.name.localeCompare(b.name));
+ const sel=$('voice'),saved=load('ra:voice');sel.innerHTML='';const po=document.createElement('option');po.value='piper';po.textContent='Offline natural voice (works with screen locked)';sel.appendChild(po);
+ voices.forEach((v,i)=>{const o=document.createElement('option');o.value=i;o.textContent=v.name+' ('+v.lang+')';sel.appendChild(o)});
+ const si=voices.findIndex(v=>v.name===saved);if(saved==='piper')sel.value='piper';else if(si>=0)sel.value=si;else if(voices.length)sel.selectedIndex=1;
+}
+if(synth){fillVoices();synth.onvoiceschanged=fillVoices}
+$('voice').onchange=()=>{const val=$('voice').value;save('ra:voice',val==='piper'?'piper':(voices[val]||{}).name||'');restart()};
+$('rate').value=load('ra:rate')||1;$('rv').textContent=(+$('rate').value).toFixed(1)+'×';
+$('rate').onchange=()=>{save('ra:rate',$('rate').value);restart()};
+$('rate').oninput=()=>{$('rv').textContent=(+$('rate').value).toFixed(1)+'×'};
+
+/* ---------- PDF → sentences ---------- */
+function split(text,p){
+ text=text.replace(/(\w)-\s+(\w)/g,'$1$2').replace(/\s+/g,' ').trim();
+ if(!text)return[];
+ const out=[];
+ (text.match(/[^.!?…]+[.!?…]+["”’')\]]*\s*|[^.!?…]+$/g)||[text]).forEach(s=>{
+  s=s.trim();
+  while(s.length>240){let c=s.lastIndexOf(', ',200);if(c<60)c=s.lastIndexOf(' ',200);if(c<1)c=200;out.push({p,t:s.slice(0,c+1).trim()});s=s.slice(c+1).trim()}
+  if(s)out.push({p,t:s});
+ });
+ return out;
+}
+async function openPdf(file){
+ stop();say('Reading “'+file.name+'”…');
+ try{
+  const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+  S=[];pages=pdf.numPages;
+  for(let n=1;n<=pages;n++){
+   const tc=await (await pdf.getPage(n)).getTextContent();
+   let line='',lastY=null;
+   tc.items.forEach(it=>{const y=it.transform[5];
+    if(lastY!==null&&Math.abs(y-lastY)>2){line+=(it.str.match(/^[a-z]/)||/-$/.test(line))?' ':'\n';}
+    line+=it.str;lastY=y;if(it.hasEOL)line+=' ';});
+   split(line.replace(/\n/g,' '),n).forEach(s=>S.push(s));
+   if(n%10===0)say('Reading page '+n+' of '+pages+'…');
+  }
+  if(!S.length){say('No readable text found. This looks like a scanned book, so the pages are images. Try a PDF with selectable text.',true);return}
+  name=file.name;$('title').textContent=file.name.replace(/\.pdf$/i,'');
+  $('ptot').textContent=pages;$('pnum').max=pages;
+  const saved=parseInt(load('ra:pos:'+name+':'+S.length),10);
+  idx=saved>=0&&saved<S.length?saved:0;curPage=-1;
+  $('player').style.display='block';say('');show(idx);
+  if(idx>0)say('Resumed where you left off.');
+ }catch(e){say('Couldn’t open that file. Make sure it’s a valid, unlocked PDF.',true)}
+}
+
+/* ---------- display ---------- */
+function show(i){
+ const p=S[i].p;
+ if('mediaSession' in navigator&&window.MediaMetadata)navigator.mediaSession.metadata=new MediaMetadata({title:'Page '+p,artist:$('title').textContent,album:'Read Aloud'});
+ if(p!==curPage){
+  curPage=p;const r=$('reader');r.textContent='';
+  S.forEach((s,k)=>{if(s.p===p){const e=document.createElement('span');e.className='s';e.dataset.i=k;e.textContent=s.t+' ';r.appendChild(e)}});
+  $('pnum').value=p;
+ }
+ document.querySelectorAll('.s.on').forEach(e=>e.classList.remove('on'));
+ const el=document.querySelector('.s[data-i="'+i+'"]');
+ if(el){el.classList.add('on');el.scrollIntoView({block:'center',behavior:'smooth'})}
+ $('prog').style.width=(i/(S.length-1||1)*100)+'%';
+ save('ra:pos:'+name+':'+S.length,i);
+}
+$('reader').onclick=e=>{const t=e.target.closest('.s');if(t){idx=+t.dataset.i;show(idx);if(playing)speak()}};
+
+/* ---------- speech ---------- */
+function speak(){
+ synth.cancel();const my=++token;
+ if(idx>=S.length){stop();idx=0;show(0);return}
+ show(idx);
+ if(engine()==='piper'){speakPiper(my);return}
+ $('au').pause();
+ const u=new SpeechSynthesisUtterance(S[idx].t);
+ const v=voices[$('voice').value];if(v){u.voice=v;u.lang=v.lang}
+ u.rate=+$('rate').value;
+ u.onend=()=>{if(my===token&&playing){idx++;speak()}};
+ u.onerror=e=>{if(my===token&&playing&&e.error!=='interrupted'&&e.error!=='canceled'){idx++;speak()}};
+ setTimeout(()=>{if(my===token)synth.speak(u)},30);
+}
+const VOICE='en_US-hfc_female-medium';let tts=null,cache={},sil=null,chain=Promise.resolve();
+function engine(){return $('voice').value==='piper'?'piper':'device'}
+function silence(){if(sil)return sil;const n=8000,b=new Uint8Array(44+n),d=new DataView(b.buffer);
+ const w=(o,t)=>[...t].forEach((c,i)=>b[o+i]=c.charCodeAt(0));
+ w(0,'RIFF');d.setUint32(4,36+n,true);w(8,'WAVEfmt ');d.setUint32(16,16,true);d.setUint16(20,1,true);d.setUint16(22,1,true);d.setUint32(24,8000,true);d.setUint32(28,8000,true);d.setUint16(32,1,true);d.setUint16(34,8,true);w(36,'data');d.setUint32(40,n,true);b.fill(128,44);
+ return sil=URL.createObjectURL(new Blob([b],{type:'audio/wav'}))}
+function keepAlive(on){
+ const k=$('ka');
+ if(on){k.src=silence();k.play().catch(()=>{});if(engine()==='piper'){const a=$('au');a.src=silence();a.play().catch(()=>{})}}else k.pause();
+ if('mediaSession' in navigator)navigator.mediaSession.playbackState=on?'playing':'paused';
+}
+if('mediaSession' in navigator){const m=navigator.mediaSession;
+ m.setActionHandler('play',()=>play());m.setActionHandler('pause',()=>pause());
+ m.setActionHandler('nexttrack',()=>jump(idx+1));m.setActionHandler('previoustrack',()=>jump(idx-1));}
+async function loadPiper(){
+ if(tts)return tts;
+ const n=$('vnote'),old=n.textContent;
+ try{
+  n.textContent='Loading the natural voice…';
+  const m=await import('https://esm.sh/@diffusionstudio/vits-web@1.0.3');
+  if(!(await m.stored()).includes(VOICE))
+   await m.download(VOICE,p=>{n.textContent='Downloading the natural voice: '+Math.round(p.loaded*100/p.total)+'%'});
+  tts=m;n.textContent=old;return tts;
+ }catch(e){n.textContent=old;return null}
+}
+function gen(i){if(i>=S.length)return null;
+ if(!cache[i]){const p=chain.catch(()=>{}).then(()=>tts.predict({text:S[i].t,voiceId:VOICE}));chain=p;cache[i]=p.catch(e=>{delete cache[i];throw e})}
+ return cache[i]}
+function useDevice(){
+ if($('voice').options.length<2){pause();return}
+ $('voice').selectedIndex=1;save('ra:voice',(voices[$('voice').value]||{}).name||'');if(playing)speak()}
+async function speakPiper(my){
+ try{
+  if(!(await loadPiper())){if(my===token){say('The natural voice couldn’t load. Switched to a device voice.',true);useDevice()}return}
+  const wav=await gen(idx);if(my!==token)return;
+  gen(idx+1);gen(idx+2);Object.keys(cache).forEach(k=>{if(k<idx-1)delete cache[k]});
+  const a=$('au');a.onended=null;a.src=URL.createObjectURL(wav);
+  a.defaultPlaybackRate=+$('rate').value;a.playbackRate=+$('rate').value;
+  a.onended=()=>{URL.revokeObjectURL(a.src);if(my===token&&playing){idx++;speak()}};
+  await a.play();
+ }catch(e){if(my===token){say('The natural voice stopped working. Switched to a device voice.',true);useDevice()}}
+}
+function play(){playing=true;$('play').textContent='⏸';$('play').setAttribute('aria-label','Pause');keepAlive(true);speak()}
+function pause(){playing=false;token++;synth.cancel();const a=$('au');a.onended=null;a.pause();keepAlive(false);$('play').textContent='▶';$('play').setAttribute('aria-label','Play')}
+function stop(){pause()}
+function restart(){if(playing)speak()}
+function jump(i){idx=Math.max(0,Math.min(S.length-1,i));show(idx);if(playing)speak()}
+function gotoPage(p){p=Math.max(1,Math.min(pages,p));const i=S.findIndex(s=>s.p>=p);if(i>=0)jump(i)}
+
+$('play').onclick=()=>playing?pause():play();
+$('back').onclick=()=>jump(idx-1);
+$('fwd').onclick=()=>jump(idx+1);
+$('pprev').onclick=()=>gotoPage(S[idx].p-1);
+$('pnext').onclick=()=>gotoPage(S[idx].p+1);
+$('pnum').onchange=()=>gotoPage(+$('pnum').value);
+$('swap').onclick=()=>{stop();$('player').style.display='none';say('')};
+document.addEventListener('keydown',e=>{if(!S.length||/INPUT|SELECT/.test(e.target.tagName))return;
+ if(e.code==='Space'){e.preventDefault();$('play').click()}
+ if(e.code==='ArrowRight')jump(idx+1);if(e.code==='ArrowLeft')jump(idx-1)});
+
+/* ---------- upload ---------- */
+const drop=$('drop'),inp=$('file');
+drop.onclick=()=>inp.click();
+drop.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();inp.click()}};
+inp.onchange=()=>{if(inp.files[0])openPdf(inp.files[0]);inp.value=''};
+['dragenter','dragover'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f&&/pdf$/i.test(f.type||f.name))openPdf(f);else say('That isn’t a PDF. Choose a .pdf file.',true)});
+if('serviceWorker' in navigator&&location.protocol.indexOf('http')===0)navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
